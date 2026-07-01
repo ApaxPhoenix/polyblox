@@ -4,19 +4,19 @@
 
 #include "device.hpp"
 
-namespace core::gfx::lib::drivers {
+namespace core::graphics::library::drivers {
 
     struct Context;
 
-    class DirectX final : public Device {
+    class Vulkan final : public Device {
     public:
-        explicit DirectX(const void* target) noexcept;
-        ~DirectX() override;
+        explicit Vulkan(const void* target) noexcept;
+        ~Vulkan() override;
 
-        DirectX(const DirectX&) = delete;
-        DirectX& operator=(const DirectX&) = delete;
-        DirectX(DirectX&&) noexcept = default;
-        DirectX& operator=(DirectX&&) noexcept = delete;
+        Vulkan(const Vulkan&) = delete;
+        Vulkan& operator=(const Vulkan&) = delete;
+        Vulkan(Vulkan&&) noexcept = default;
+        Vulkan& operator=(Vulkan&&) noexcept = delete;
 
         void begin(std::uint32_t width, std::uint32_t height, const State& state) noexcept override;
         void submit(const Buffer& stream) noexcept override;
@@ -33,13 +33,8 @@ namespace core::gfx::lib::drivers {
         void unload(std::uint32_t id) noexcept override;
 
         void surface(std::uint32_t id, std::uint32_t width, std::uint32_t height) noexcept override;
-        void remove(std::uint32_t id) noexcept override;
-
-    private:
-        void release() noexcept;
-        void sync() const noexcept;
-
-        Context* context;
+        void bind(std::uint32_t id) noexcept override;
+        void release(std::uint32_t id) noexcept override;
     };
 
 }

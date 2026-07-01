@@ -1,9 +1,10 @@
 #pragma once
 
 #include <vector>
+
 #include "payload.hpp"
 
-namespace core::gfx::lib::drivers {
+namespace core::graphics::library::drivers {
 
     class Queue final {
     public:

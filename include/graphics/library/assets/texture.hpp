@@ -6,7 +6,7 @@
 #include <unordered_map>
 #include <cstdint>
 
-namespace core::gfx::lib::assets {
+namespace core::graphics::library::assets {
 
     class Texture final {
     public:
@@ -34,6 +34,7 @@ namespace core::gfx::lib::assets {
     private:
         std::vector<Block> storage;
         std::unordered_map<std::string, std::uint32_t> registry;
+        std::vector<std::uint32_t> slots;
     };
 
 }

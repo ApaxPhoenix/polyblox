@@ -1,15 +1,22 @@
 #pragma once
 
-#include <unordered_map>
 #include <vector>
+#include <array>
 
 #include "payload.hpp"
 
-namespace core::gfx::lib::assets {
+namespace core::graphics::library::assets {
     class Shader;
 }
 
-namespace core::gfx::lib::drivers {
+namespace core::graphics::library::drivers {
+
+    static constexpr std::size_t MAX_UNIFORM_SLOTS = 128;
+
+    struct UniformBlock {
+        std::vector<std::uint8_t> buffer;
+        bool active{false};
+    };
 
     struct State {
         const float* view{nullptr};
@@ -18,7 +25,8 @@ namespace core::gfx::lib::drivers {
         std::uint32_t active{0};
         std::uint32_t flags{0};
         std::uint32_t pipeline{0};
-        const std::unordered_map<std::uint32_t, std::vector<std::uint8_t>>* uniforms{nullptr};
+        // Point to the stable, flat allocation array
+        const std::array<UniformBlock, MAX_UNIFORM_SLOTS>* uniforms{nullptr};
     };
 
     class Device {
@@ -40,7 +48,8 @@ namespace core::gfx::lib::drivers {
         virtual void unload(std::uint32_t id) noexcept = 0;
 
         virtual void surface(std::uint32_t id, std::uint32_t width, std::uint32_t height) noexcept = 0;
-        virtual void remove(std::uint32_t id) noexcept = 0;
+        virtual void bind(std::uint32_t id) noexcept = 0;
+        virtual void release(std::uint32_t id) noexcept = 0;
     };
 
 }

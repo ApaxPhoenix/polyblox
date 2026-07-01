@@ -1,8 +1,6 @@
 #pragma once
 
-#include <cstdint>
-
-namespace core::gfx::lib::drivers {
+namespace core::graphics::library::drivers {
 
     struct Rect {
         float x{0.0f};
@@ -91,9 +89,9 @@ namespace core::gfx::lib::drivers {
     };
 
     struct Buffer {
-        const Key* keys;
-        const Command* commands;
-        std::size_t count;
+        const Key* keys{nullptr};
+        const Command* commands{nullptr};
+        std::size_t count{0};
     };
 
 }

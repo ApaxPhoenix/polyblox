@@ -1,12 +1,18 @@
-#include "gfx/lib/assets/font.hpp"
+#include "graphics/library/assets/font.hpp"
 
-namespace core::gfx::lib::assets {
+namespace core::graphics::library::assets {
 
     Font::Font(Texture& registry) noexcept : textures(registry) {}
 
     std::uint32_t Font::load(const std::string_view path) noexcept {
-        const auto id = textures.load(path);
-        storage.push_back({id, {}});
+        const auto atlas = textures.load(path);
+        if (!slots.empty()) {
+            const auto id = slots.back();
+            slots.pop_back();
+            storage[id - 1] = {atlas, {}};
+            return id;
+        }
+        storage.push_back({atlas, {}});
         return static_cast<std::uint32_t>(storage.size());
     }
 
@@ -16,10 +22,13 @@ namespace core::gfx::lib::assets {
 
     void Font::dispose(const std::uint32_t id) noexcept {
         if (id > 0 && id <= storage.size()) {
-            if (storage[id - 1].atlas != 0) {
-                textures.dispose(storage[id - 1].atlas);
+            if (storage[id - 1].atlas != 0 || !storage[id - 1].glyphs.empty()) {
+                if (storage[id - 1].atlas != 0) {
+                    textures.dispose(storage[id - 1].atlas);
+                }
+                storage[id - 1] = {};
+                slots.push_back(id);
             }
-            storage[id - 1] = {};
         }
     }
 
@@ -30,6 +39,7 @@ namespace core::gfx::lib::assets {
             }
         }
         storage.clear();
+        slots.clear();
     }
 
 }

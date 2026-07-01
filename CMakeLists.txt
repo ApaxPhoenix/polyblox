@@ -23,9 +23,9 @@ if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/vendor/yoga/CMakeLists.txt")
     execute_process(COMMAND git clone --branch v3.1.0 https://github.com/facebook/yoga.git "${CMAKE_CURRENT_SOURCE_DIR}/vendor/yoga")
 endif()
 
-if(APPLE AND NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/vendor/metal/README.md")
-    file(REMOVE_RECURSE "${CMAKE_CURRENT_SOURCE_DIR}/vendor/metal")
-    execute_process(COMMAND git clone https://github.com/bkaradzic/metal-cpp.git "${CMAKE_CURRENT_SOURCE_DIR}/vendor/metal")
+if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/vendor/metal-cpp/README.md")
+    file(REMOVE_RECURSE "${CMAKE_CURRENT_SOURCE_DIR}/vendor/metal-cpp")
+    execute_process(COMMAND git clone https://github.com/bkaradzic/metal-cpp.git "${CMAKE_CURRENT_SOURCE_DIR}/vendor/metal-cpp")
 endif()
 
 file(MAKE_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/vendor/luajit/include/luajit-2.1")
@@ -140,6 +140,8 @@ if(APPLE)
             "${CMAKE_CURRENT_SOURCE_DIR}/src/*.mm"
     )
     list(APPEND SOURCES ${METAL_SOURCES})
+else()
+    set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/src/graphics/library/drivers/metal.cpp" PROPERTIES HEADER_FILE_ONLY TRUE)
 endif()
 
 add_library(runtime SHARED ${SOURCES} ${HEADERS} ${YOGA_SOURCES})
@@ -169,12 +171,9 @@ target_include_directories(runtime PUBLIC
         src/vm/core
         vendor/yoga
         vendor/yoga/yoga
+        vendor/metal-cpp
         ${Vulkan_INCLUDE_DIRS}
 )
-
-if(APPLE)
-    target_include_directories(runtime PRIVATE vendor/metal)
-endif()
 
 if(MSVC)
     target_link_libraries(runtime PRIVATE sol3 liblua Vulkan::Vulkan d3d12 dxgi)

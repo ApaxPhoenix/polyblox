@@ -1,5 +1,7 @@
-#include "../../../../include/gfx/lib/drivers/queue.hpp"
 #include <algorithm>
+
+#include "graphics/library/drivers/queue.hpp"
+
 
 namespace core::gfx::lib::drivers {
 

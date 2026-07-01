@@ -6,7 +6,7 @@
 
 #include "texture.hpp"
 
-namespace core::gfx::lib::assets {
+namespace core::graphics::library::assets {
 
     class Font final {
     public:
@@ -39,6 +39,7 @@ namespace core::gfx::lib::assets {
     private:
         Texture& textures;
         std::vector<Block> storage;
+        std::vector<std::uint32_t> slots;
     };
 
 }
