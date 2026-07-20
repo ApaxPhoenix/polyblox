@@ -2,11 +2,11 @@
 #include <mutex>
 #include <shared_mutex>
 
-#include "../include/core/ecs/world.hpp"
+#include "core/ecs/world.hpp"
 
 namespace core::ecs {
 
-    std::uint32_t World::component(const std::string& name, std::size_t size) {
+    std::uint32_t World::component(const std::string& name, const std::size_t size) {
         if (const auto find = names.find(name); find != names.end()) {
             return find->second;
         }
@@ -34,28 +34,28 @@ namespace core::ecs {
             slots.resize(id + 1);
         }
         const Mask blank;
-        Kind* arch = view(blank);
-        arch->push(id);
-        slots[id] = {arch, arch->rows.size() - 1};
+        Archetype* archetype = view(blank);
+        archetype->allocate(id);
+        slots[id] = {archetype, archetype->entities.size() - 1};
         return id;
     }
 
     Id World::clone(const Id id) {
         const Id duplicate = spawn();
-        auto [arch, source_row] = slots[id];
-        std::shared_lock lock_shared(arch->lock);
+        auto [archetype, source_row] = slots[id];
+        std::shared_lock lock_shared(archetype->mutex);
 
-        const Mask mask = arch->mask;
+        const Mask mask = archetype->signature;
         move(duplicate, mask);
 
         auto [goal, dest_row] = slots[duplicate];
-        std::unique_lock lock_unique(goal->lock);
+        std::unique_lock lock_unique(goal->mutex);
 
-        for (auto const& [tag, track] : arch->maps) {
-            if (const std::size_t size = sizes[tag]; size > 0) {
-                const std::size_t offset = goal->maps[tag];
-                std::memcpy(goal->page[offset].data() + dest_row * size,
-                            arch->page[track].data() + source_row * size,
+        for (auto const& [component, track] : archetype->offsets) {
+            if (const std::size_t size = sizes[component]; size > 0) {
+                const std::size_t offset = goal->offsets[component];
+                std::memcpy(goal->columns[offset].data() + dest_row * size,
+                            archetype->columns[track].data() + source_row * size,
                             size);
             }
         }
@@ -67,8 +67,8 @@ namespace core::ecs {
             steps.emplace_back([this, id]() { dispose(id); });
             return;
         }
-        auto [arch, row] = slots[id];
-        if (!arch) return;
+        auto [archetype, row] = slots[id];
+        if (!archetype) return;
 
         if (tail != 0xFFFFFFFF && has(id, tail)) {
             if (const auto* list = static_cast<std::vector<Id>*>(get(id, tail))) {
@@ -78,7 +78,7 @@ namespace core::ecs {
             }
         }
 
-        if (const std::uint32_t moved = arch->pull(row); moved != id) {
+        if (const std::uint32_t moved = archetype->dispose(row); moved != id) {
             slots[moved].row = row;
         }
         slots[id] = {nullptr, 0};
@@ -128,8 +128,8 @@ namespace core::ecs {
             steps.emplace_back([this, id, type, data]() { set(id, type, data); });
             return nullptr;
         }
-        auto [arch, row] = slots[id];
-        Mask mask = arch->mask;
+        auto [archetype, row] = slots[id];
+        Mask mask = archetype->signature;
         mask.set(type);
 
         move(id, mask);
@@ -146,21 +146,21 @@ namespace core::ecs {
     }
 
     void* World::get(const Id id, const std::uint32_t type) const {
-        auto [arch, row] = slots[id];
-        if (!arch) return nullptr;
+        auto [archetype, row] = slots[id];
+        if (!archetype) return nullptr;
 
-        const auto find = arch->maps.find(type);
-        if (find == arch->maps.end()) return nullptr;
+        const auto find = archetype->offsets.find(type);
+        if (find == archetype->offsets.end()) return nullptr;
 
         const std::size_t size = sizes[type];
         if (size == 0) return nullptr;
-        return arch->page[find->second].data() + row * size;
+        return archetype->columns[find->second].data() + row * size;
     }
 
     bool World::has(const Id id, const std::uint32_t type) const {
-        auto [arch, row] = slots[id];
-        if (!arch) return false;
-        return arch->mask.test(type);
+        auto [archetype, row] = slots[id];
+        if (!archetype) return false;
+        return archetype->signature.test(type);
     }
 
     void World::remove(Id id, std::uint32_t type) {
@@ -168,8 +168,8 @@ namespace core::ecs {
             steps.emplace_back([this, id, type]() { remove(id, type); });
             return;
         }
-        auto [arch, row] = slots[id];
-        Mask mask = arch->mask;
+        auto [archetype, row] = slots[id];
+        Mask mask = archetype->signature;
         mask.reset(type);
         move(id, mask);
     }
@@ -202,57 +202,57 @@ namespace core::ecs {
         steps.clear();
     }
 
-    Find World::query() const {
-        return Find(kinds);
+    Query World::query() const {
+        return Query(kinds);
     }
 
-    void World::loop(const Find& query, const Find::Call& action) const {
-        query.process(action, query.plan());
+    void World::loop(const Query& query, const Query::Callback& action) {
+        query.process(action, query.results());
     }
 
-    Kind* World::view(const Mask& mask) {
-        for (const auto& arch : kinds) {
-            if (arch->mask == mask) return arch.get();
+    Archetype* World::view(const Mask& mask) {
+        for (const auto& archetype : kinds) {
+            if (archetype->signature == mask) return archetype.get();
         }
-        auto arch = std::make_unique<Kind>();
-        arch->mask = mask;
-        for (std::uint32_t tag = 0; tag < Cap; ++tag) {
+        auto archetype = std::make_unique<Archetype>();
+        archetype->signature = mask;
+        for (std::uint32_t tag = 0; tag < Capacity; ++tag) {
             if (mask.test(tag)) {
-                arch->maps[tag] = arch->page.size();
-                arch->page.emplace_back();
-                arch->bits.push_back(sizes[tag]);
+                archetype->offsets[tag] = archetype->columns.size();
+                archetype->columns.emplace_back();
+                archetype->sizes.push_back(sizes[tag]);
             }
         }
 
-        kinds.push_back(std::move(arch));
+        kinds.push_back(std::move(archetype));
         return kinds.back().get();
     }
 
     void World::move(const Id id, const Mask& mask) {
         auto [type, row] = slots[id];
-        Kind* old = type;
-        if (old->mask == mask) return;
+        Archetype* old = type;
+        if (old->signature == mask) return;
 
-        Kind* goal = view(mask);
-        goal->push(id);
+        Archetype* goal = view(mask);
+        goal->allocate(id);
 
-        auto [dest_type, dest_row] = Slot{goal, goal->rows.size() - 1};
+        auto [dest_archetype, dest_row] = Slot{goal, goal->entities.size() - 1};
 
-        for (auto const& [tag, track] : old->maps) {
-            if (mask.test(tag)) {
-                if (const std::size_t size = sizes[tag]; size > 0) {
-                    const std::size_t offset = goal->maps[tag];
-                    std::memcpy(goal->page[offset].data() + dest_row * size,
-                                old->page[track].data() + row * size,
+        for (auto const& [component, track] : old->offsets) {
+            if (mask.test(component)) {
+                if (const std::size_t size = sizes[component]; size > 0) {
+                    const std::size_t offset = goal->offsets[component];
+                    std::memcpy(goal->columns[offset].data() + dest_row * size,
+                                old->columns[track].data() + row * size,
                                 size);
                 }
             }
         }
 
-        if (const std::uint32_t moved = old->pull(row); moved != id) {
+        if (const std::uint32_t moved = old->dispose(row); moved != id) {
             slots[moved].row = row;
         }
-        slots[id] = {dest_type, dest_row};
+        slots[id] = {dest_archetype, dest_row};
     }
 
 }

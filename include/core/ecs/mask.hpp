@@ -1,10 +1,11 @@
 #pragma once
+
 #include <bitset>
 #include <cstddef>
 
 namespace core::ecs {
 
-    constexpr std::size_t Cap = 256;
-    using Mask = std::bitset<Cap>;
+    constexpr std::size_t Capacity = 256;
+    using Mask = std::bitset<Capacity>;
 
 }

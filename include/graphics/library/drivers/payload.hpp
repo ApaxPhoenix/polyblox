@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 namespace core::graphics::library::drivers {
 
     struct Rect {

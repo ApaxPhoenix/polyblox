@@ -1,3 +1,7 @@
+#include <sol/sol.hpp>
+#include <string>
+#include <cstdio>
+
 #include "vm/api/primitives.hpp"
 #include "core/primitives/vector2.hpp"
 #include "core/primitives/vector3.hpp"
@@ -6,19 +10,16 @@
 #include "core/primitives/matrix3.hpp"
 #include "core/primitives/matrix4.hpp"
 #include "core/primitives/transform.hpp"
-#include <sol/sol.hpp>
-#include <string>
 
 using namespace core::ecs::primitives;
 
 void primitives(lua_State* state) {
-
     sol::state_view view(state);
 
     view.new_usertype<Vector2>("Vector2",
         sol::constructors<Vector2(), Vector2(float, float)>(),
-        "x", sol::property([](const Vector2& self) { return self.x; }, [](Vector2& self, const float value) { self.x = value; }),
-        "y", sol::property([](const Vector2& self) { return self.y; }, [](Vector2& self, const float value) { self.y = value; }),
+        "x", &Vector2::x,
+        "y", &Vector2::y,
         "length", &Vector2::length,
         "squared", &Vector2::squared,
         "normalized", &Vector2::normalized,
@@ -50,9 +51,9 @@ void primitives(lua_State* state) {
 
     view.new_usertype<Vector3>("Vector3",
         sol::constructors<Vector3(), Vector3(float, float, float), Vector3(const Vector2&, float)>(),
-        "x", sol::property([](const Vector3& self) { return self.x; }, [](Vector3& self, const float value) { self.x = value; }),
-        "y", sol::property([](const Vector3& self) { return self.y; }, [](Vector3& self, const float value) { self.y = value; }),
-        "z", sol::property([](const Vector3& self) { return self.z; }, [](Vector3& self, const float value) { self.z = value; }),
+        "x", &Vector3::x,
+        "y", &Vector3::y,
+        "z", &Vector3::z,
         "length", &Vector3::length,
         "squared", &Vector3::squared,
         "normalized", &Vector3::normalized,
@@ -85,10 +86,10 @@ void primitives(lua_State* state) {
 
     view.new_usertype<Vector4>("Vector4",
         sol::constructors<Vector4(), Vector4(float, float, float, float), Vector4(const Vector3&, float)>(),
-        "x", sol::property([](const Vector4& self) { return self.x; }, [](Vector4& self, const float value) { self.x = value; }),
-        "y", sol::property([](const Vector4& self) { return self.y; }, [](Vector4& self, const float value) { self.y = value; }),
-        "z", sol::property([](const Vector4& self) { return self.z; }, [](Vector4& self, const float value) { self.z = value; }),
-        "w", sol::property([](const Vector4& self) { return self.w; }, [](Vector4& self, const float value) { self.w = value; }),
+        "x", &Vector4::x,
+        "y", &Vector4::y,
+        "z", &Vector4::z,
+        "w", &Vector4::w,
         "length", &Vector4::length,
         "squared", &Vector4::squared,
         "normalized", &Vector4::normalized,
@@ -115,10 +116,10 @@ void primitives(lua_State* state) {
 
     view.new_usertype<Quaternion>("Quaternion",
         sol::constructors<Quaternion(), Quaternion(float, float, float, float)>(),
-        "x", sol::property([](const Quaternion& self) { return self.x; }, [](Quaternion& self, const float value) { self.x = value; }),
-        "y", sol::property([](const Quaternion& self) { return self.y; }, [](Quaternion& self, const float value) { self.y = value; }),
-        "z", sol::property([](const Quaternion& self) { return self.z; }, [](Quaternion& self, const float value) { self.z = value; }),
-        "w", sol::property([](const Quaternion& self) { return self.w; }, [](Quaternion& self, const float value) { self.w = value; }),
+        "x", &Quaternion::x,
+        "y", &Quaternion::y,
+        "z", &Quaternion::z,
+        "w", &Quaternion::w,
         "length", [](const Quaternion& quaternion) { return static_cast<float>(quaternion.length()); },
         "dot", [](const Quaternion& alpha, const Quaternion& beta) { return static_cast<float>(alpha.dot(beta)); },
         "normalized", &Quaternion::normalized,
@@ -203,9 +204,9 @@ void primitives(lua_State* state) {
 
     view.new_usertype<Transform>("Transform",
         sol::constructors<Transform(), Transform(const Vector3&, const Quaternion&, const Vector3&)>(),
-        "translation", sol::property([](const Transform& self) { return self.translation; }, [](Transform& self, const Vector3& value) { self.translation = value; }),
-        "rotation", sol::property([](const Transform& self) { return self.rotation; }, [](Transform& self, const Quaternion& value) { self.rotation = value; }),
-        "scale", sol::property([](const Transform& self) { return self.scale; }, [](Transform& self, const Vector3& value) { self.scale = value; }),
+        "translation", &Transform::translation,
+        "rotation", &Transform::rotation,
+        "scale", &Transform::scale,
         "matrix", &Transform::matrix,
         "forward", &Transform::forward,
         "right", &Transform::right,

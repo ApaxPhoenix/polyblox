@@ -1,6 +1,5 @@
 #pragma once
 
-#include <memory>
 #include <vector>
 #include <array>
 #include <cstdint>
@@ -9,16 +8,11 @@
 #include "assets/font.hpp"
 #include "assets/mesh.hpp"
 #include "assets/shader.hpp"
-#include "drivers/device.hpp"
+#include "drivers/vulkan.hpp"
 #include "drivers/queue.hpp"
+#include "drivers/input.hpp"
 
 namespace core::graphics::library {
-
-    enum class Api : std::uint32_t {
-        Vulkan = 1,
-        Metal = 2,
-        DirectX = 3
-    };
 
     struct Uniform {
         std::vector<std::uint8_t> buffer;
@@ -27,7 +21,7 @@ namespace core::graphics::library {
 
     class Context final {
     public:
-        Context(Api api, const void* target) noexcept;
+        explicit Context(const void* window) noexcept;
         ~Context() noexcept = default;
 
         Context(const Context&) = delete;
@@ -35,21 +29,31 @@ namespace core::graphics::library {
         Context(Context&&) noexcept = default;
         Context& operator=(Context&&) noexcept = delete;
 
-        void resize(std::uint32_t width, std::uint32_t height) noexcept;
+        void resize(std::uint32_t columns, std::uint32_t rows) noexcept;
         void push(const drivers::Key& key, const drivers::Command& command) noexcept;
         void render() noexcept;
         void flush() noexcept;
 
-        void camera(const float* view, const float* projection) noexcept;
+        void camera(const float* eye, const float* lens) noexcept;
         void viewport(const drivers::Rect& bounds) noexcept;
 
-        std::uint32_t target(std::uint32_t width, std::uint32_t height) noexcept;
-        void bind(std::uint32_t id) noexcept;
-        void dispose(std::uint32_t id) noexcept;
+        std::uint32_t target(std::uint32_t columns, std::uint32_t rows) noexcept;
+        void dispose(std::uint32_t identity) noexcept;
 
         void flags(std::uint32_t setup) noexcept;
         void program(std::uint32_t asset) noexcept;
         void uniform(std::uint32_t slot, const void* data, std::size_t size) noexcept;
+
+        void key(std::uint32_t code, bool toggle) noexcept;
+        void move(float x, float y) noexcept;
+        void button(std::uint32_t code, bool toggle) noexcept;
+        void scroll(float offset) noexcept;
+
+        [[nodiscard]] const std::array<bool, 512>& inputs() const noexcept { return keys; }
+        [[nodiscard]] const std::array<bool, 16>& clicks() const noexcept { return buttons; }
+        [[nodiscard]] const std::array<float, 2>& location() const noexcept { return position; }
+        [[nodiscard]] const std::array<float, 2>& velocity() const noexcept { return delta; }
+        [[nodiscard]] float scroll() const noexcept { return wheel; }
 
         [[nodiscard]] assets::Texture& textures() noexcept { return textures_; }
         [[nodiscard]] assets::Mesh& meshes() noexcept { return meshes_; }
@@ -57,7 +61,7 @@ namespace core::graphics::library {
         [[nodiscard]] assets::Shader& shaders() noexcept { return shaders_; }
 
     private:
-        std::unique_ptr<drivers::Device> device;
+        drivers::Vulkan driver;
 
         assets::Texture textures_;
         assets::Mesh meshes_;
@@ -78,11 +82,19 @@ namespace core::graphics::library {
         std::uint32_t settings{0};
         std::uint32_t pipeline{0};
         std::array<Uniform, 128> uniforms;
+
+        std::array<bool, 512> keys{};
+        std::array<bool, 16> buttons{};
+        std::array<float, 2> position{};
+        std::array<float, 2> previous{};
+        std::array<float, 2> delta{};
+        float wheel{0.0f};
+        bool touch{false};
     };
 
     struct Base {
-        void* (*setup)(std::uint32_t api, const void* window);
-        void (*resize)(void* handle, std::uint32_t width, std::uint32_t height);
+        void* (*setup)(const void* window);
+        void (*resize)(void* handle, std::uint32_t columns, std::uint32_t rows);
         void (*push)(void* handle, std::uint64_t key, const void* command);
         void (*render)(void* handle);
         void (*flush)(void* handle);
@@ -90,7 +102,7 @@ namespace core::graphics::library {
     };
 
     struct State {
-        void (*camera)(void* handle, const float* view, const float* projection);
+        void (*camera)(void* handle, const float* eye, const float* lens);
         void (*viewport)(void* handle, float x, float y, float width, float height);
         void (*flags)(void* handle, std::uint32_t setup);
         void (*program)(void* handle, std::uint32_t asset);
@@ -100,35 +112,35 @@ namespace core::graphics::library {
     struct Texture {
         std::uint32_t (*load)(void* handle, const char* path);
         std::uint32_t (*create)(void* handle, const std::uint8_t* pixels, std::uint32_t width, std::uint32_t height);
-        void (*update)(void* handle, std::uint32_t id, const std::uint8_t* pixels, std::uint32_t width, std::uint32_t height);
-        void (*dispose)(void* handle, std::uint32_t id);
+        void (*update)(void* handle, std::uint32_t identity, const std::uint8_t* pixels, std::uint32_t width, std::uint32_t height);
+        void (*dispose)(void* handle, std::uint32_t identity);
     };
 
     struct Mesh {
         std::uint32_t (*create)(void* handle, const float* vertices, std::size_t size);
-        void (*update)(void* handle, std::uint32_t id, const float* vertices, std::size_t size);
-        void (*dispose)(void* handle, std::uint32_t id);
+        void (*update)(void* handle, std::uint32_t identity, const float* vertices, std::size_t size);
+        void (*dispose)(void* handle, std::uint32_t identity);
     };
 
     struct Font {
         std::uint32_t (*load)(void* handle, const char* path);
-        void (*dispose)(void* handle, std::uint32_t id);
+        void (*dispose)(void* handle, std::uint32_t identity);
     };
 
     struct Shader {
         std::uint32_t (*load)(void* handle, const char* vertex, const char* path);
-        void (*dispose)(void* handle, std::uint32_t id);
+        void (*dispose)(void* handle, std::uint32_t identity);
     };
 
     struct Target {
         std::uint32_t (*create)(void* handle, std::uint32_t width, std::uint32_t height);
-        void (*bind)(void* handle, std::uint32_t id);
-        void (*dispose)(void* handle, std::uint32_t id);
+        void (*dispose)(void* handle, std::uint32_t identity);
     };
 
     struct Bindings {
         Base base;
         State state;
+        Input input;
         Texture texture;
         Mesh mesh;
         Font font;

@@ -3,7 +3,7 @@
 #include "graphics/library/drivers/queue.hpp"
 
 
-namespace core::gfx::lib::drivers {
+namespace core::graphics::library::drivers {
 
     void Queue::push(const Key& key, const Command& command) noexcept {
         this->keys.push_back(key);

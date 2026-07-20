@@ -1,16 +1,16 @@
 #pragma once
+
 #include <cstddef>
-#include <cstdint>
 
 namespace core::ecs {
 
-    class Kind;
+    class Archetype;
 
     using Id = std::uint32_t;
     constexpr Id Null = 0xFFFFFFFF;
 
     struct Slot {
-        Kind* type = nullptr;
+        Archetype* archetype = nullptr;
         std::size_t row = 0;
     };
 

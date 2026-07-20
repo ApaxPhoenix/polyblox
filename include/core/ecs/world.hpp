@@ -1,11 +1,13 @@
 #pragma once
+
 #include <memory>
 #include <vector>
 #include <string>
 #include <unordered_map>
 #include <functional>
-#include "kind.hpp"
-#include "find.hpp"
+
+#include "archetype.hpp"
+#include "query.hpp"
 
 namespace core::ecs {
 
@@ -20,7 +22,6 @@ namespace core::ecs {
         World& operator=(World&&) noexcept = default;
 
         std::uint32_t component(const std::string& name, std::size_t size = 0);
-
         Id spawn();
         Id clone(Id id);
         void dispose(Id id);
@@ -42,17 +43,18 @@ namespace core::ecs {
         void wait(std::uint32_t type, const Task& action);
 
         void batch(const std::function<void()>& flow);
-        [[nodiscard]] Find query() const;
-        void loop(const Find& query, const Find::Call& action) const;
+        [[nodiscard]] Query query() const;
+
+        static void loop(const Query& query, const Query::Callback& action);
 
     private:
-        Kind* view(const Mask& mask);
+        Archetype* view(const Mask& mask);
         void move(Id id, const Mask& mask);
 
         std::uint32_t head = 0xFFFFFFFF;
         std::uint32_t tail = 0xFFFFFFFF;
 
-        std::vector<std::unique_ptr<Kind>> kinds;
+        std::vector<std::unique_ptr<Archetype>> kinds;
         std::vector<Slot> slots;
         std::vector<Id> free;
         std::vector<std::size_t> sizes;
